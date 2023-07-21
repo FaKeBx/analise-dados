@@ -35,6 +35,8 @@ tabela %>%
 # Calcular a frequência de ocorrência dos grupos
 frequencia_grupos <- table(dados$Grupo)
 
+
+
 # Exibir a soma de alunos de cada grupo
 frequencia_grupos
 
@@ -70,13 +72,17 @@ print("Contagem de valores 'NC' em cada grupo:")
 contagem_NC_por_grupo
 
 # Tabela grupo
-tabela <- aggregate(Aluno ~ Grupo, data = dados, FUN = length)
-colnames(tabela)[2] <- "Total de Alunos"
+tabelaGrupo <- aggregate(Aluno ~ Grupo, data = dados, FUN = length)
+colnames(tabelaGrupo)[2] <- "Total de Alunos"
 
-tabela$Comparecimento <- aggregate(Aluno ~ Grupo, data = subset(dados, Nota != "NC"), FUN = length)$Aluno
-tabela$Nao_Comparecimento <- tabela$`Total de Alunos` - tabela$Comparecimento
+tabelaGrupo$Comparecimento <- aggregate(Aluno ~ Grupo, data = subset(dados, Nota != "NC"), FUN = length)$Aluno
+tabelaGrupo$Nao_Comparecimento <- tabelaGrupo$`Total de Alunos` - tabelaGrupo$Comparecimento
+colnames(tabelaGrupo)[4] <- gsub("Nao_Comparecimento", " Não Comparecimento", colnames(tabelaGrupo)[4], fixed = TRUE)
 
-tabela
+tabelaGrupo %>%
+  as.data.frame() %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 
 # Converter a tabela de frequência em um data frame
 df <- as.data.frame(frequencia_grupos)
@@ -85,15 +91,15 @@ df <- as.data.frame(frequencia_grupos)
 colnames(df) <- c("Grupo", "Numero_de_Alunos")
 
 # Calcular a frequência relativa dos grupos
-df$FrequenciaRelativa <- df$FrequenciaAbsoluta / sum(df$FrequenciaAbsoluta)
+df$FrequenciaRelativa <- df$frequencia_grupos / sum(df$frequencia_grupos)
 
 # Criar o gráfico de barras
-ggplot(df, aes(x = Grupo, y = FrequenciaAbsoluta)) +
+ggplot(df, aes(x = Grupo, y = frequencia_grupos)) +
   geom_bar(stat = "identity") +
   ggtitle("Gráfico de Barras da Variável Grupo")
 
 # Criar o gráfico de setores
-ggplot(df, aes(x = "", y = FrequenciaAbsoluta, fill = Grupo)) +
+ggplot(df, aes(x = "", y = frequencia_grupos, fill = Grupo)) +
   geom_bar(width = 1, stat = "identity") +
   coord_polar("y", start = 0) +
   ggtitle("Gráfico de Setores da Variável Grupo")
