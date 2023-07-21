@@ -1,3 +1,4 @@
+getwd()
 # Carregar os pacotes necessários
 library(dplyr)
 library(ggplot2)
@@ -6,10 +7,12 @@ library(kableExtra)
 library(moments)
 library(DT)
 
-# Carregar banco de dados
+
+
 dados <- read.table("/Users/felipekucharski/Desktop/atividade2/bancodedados.txt",header = TRUE)
 
 # classificar todas as variáveis desse conjunto de dados:
+
 # Criar uma tabela vazia
 tabela <- matrix(nrow = 3, ncol = 2)
 colnames(tabela) <- c("Variável", "Tipo de Variável")
@@ -29,88 +32,59 @@ tabela %>%
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 
-###########################
 
 # 1 ANÁLISE VARIAVEL GRUPO
-# Calcular a frequência de ocorrência dos grupos
-frequencia_grupos <- table(dados$Grupo)
-
-
-
-# Exibir a soma de alunos de cada grupo
-frequencia_grupos
-
-# Exibe o grupo com maior número de alunos
-maior_grupo <- names(which.max(frequencia_grupos))
-cat("O maior grupo é:", maior_grupo, "\n")
 
 # COMPARECIMENTO DE GRUPOS
-# Em valores absolutos
-
-# Exibe todos os alunos que compareceram em cada grupo
 comparecimento <- dados$Nota != "NC"
-tabela_comparecimento <- table(dados$Grupo[comparecimento])
-tabela_comparecimento
-
-# Em valores percentuais
-proporcao <- prop.table(tabela_comparecimento)
+tabela <- table(dados$Grupo[comparecimento])
+proporcao <- prop.table(tabela)
 porcentagem <- round(proporcao * 100, 2)
-resultado <- paste0(names(tabela_comparecimento), ": ", porcentagem, "%")
+resultado <- paste0(names(tabela), ": ", porcentagem, "%")
 resultado
 
-# Número de valores ausentes (NA ou "NC") em cada grupo
-# Transformar "NC" em NA (valor ausente)
-dados$Nota[dados$Nota == "NC"] <- NA
 
-# Contar o número de vezes que "NC" aparece em cada grupo
-contagem_NC_por_grupo <- dados %>%
+#Tabela
+tabela_freq_simples <- dados %>%
   group_by(Grupo) %>%
-  summarise(Quantidade_NC = sum(is.na(Nota)))
+  summarise(`Total de alunos por grupo` = n(),
+            Compareceram = sum(Nota != "NC"),
+            `Não Compareceram` = sum(Nota == "NC")) %>%
+  mutate(`Frequência Percentual` = `Total de alunos por grupo` / sum(`Total de alunos por grupo`) * 100,
+         `Frequência Relativa` = `Total de alunos por grupo` / sum(`Total de alunos por grupo`))
 
-# Exibir a contagem de valores "NC" em cada grupo
-print("Contagem de valores 'NC' em cada grupo:")
-contagem_NC_por_grupo
+# Criar a tabela de distribuição de frequência acumulada
+tabela_freq_acumulada <- tabela_freq_simples %>%
+  mutate(`Frequência Acumulada Absoluta` = cumsum(`Total de alunos por grupo`),
+         `Frequência Acumulada Percentual` = cumsum(`Frequência Percentual`),
+         `Frequência Acumulada Relativa` = cumsum(`Frequência Relativa`))
 
-# Tabela grupo
-tabelaGrupo <- aggregate(Aluno ~ Grupo, data = dados, FUN = length)
-colnames(tabelaGrupo)[2] <- "Total de Alunos"
-
-tabelaGrupo$Comparecimento <- aggregate(Aluno ~ Grupo, data = subset(dados, Nota != "NC"), FUN = length)$Aluno
-tabelaGrupo$Nao_Comparecimento <- tabelaGrupo$`Total de Alunos` - tabelaGrupo$Comparecimento
-colnames(tabelaGrupo)[4] <- gsub("Nao_Comparecimento", " Não Comparecimento", colnames(tabelaGrupo)[4], fixed = TRUE)
-
-tabelaGrupo %>%
-  as.data.frame() %>%
+# Exibir as tabelas
+cat("Tabela de Frequência Absoluta, Percentual e Relativa:\n")
+tabela_freq_simples %>%
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+cat("\nTabela de Frequência Acumulada Absoluta, Percentual e Relativa:\n")
+tabela_freq_acumulada %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
 
 # Converter a tabela de frequência em um data frame
 df <- as.data.frame(frequencia_grupos)
 
 # Renomear as colunas do data frame
-colnames(df) <- c("Grupo", "Numero_de_Alunos")
+colnames(df) <- c("Grupo", "FrequenciaAbsoluta")
 
 # Calcular a frequência relativa dos grupos
-df$FrequenciaRelativa <- df$frequencia_grupos / sum(df$frequencia_grupos)
+df$FrequenciaRelativa <- df$FrequenciaAbsoluta / sum(df$FrequenciaAbsoluta)
+
 
 # Criar o gráfico de barras
-ggplot(df, aes(x = Grupo, y = frequencia_grupos)) +
+ggplot(df, aes(x = Grupo, y = FrequenciaAbsoluta)) +
   geom_bar(stat = "identity") +
-  ggtitle("Gráfico de Barras da Variável Grupo")
-
-# Criar o gráfico de setores
-ggplot(df, aes(x = "", y = frequencia_grupos, fill = Grupo)) +
-  geom_bar(width = 1, stat = "identity") +
-  coord_polar("y", start = 0) +
-  ggtitle("Gráfico de Setores da Variável Grupo")
-
-# Identificar a moda
-moda <- names(which.max(frequencia_grupos))
-
-# Exibir a moda
-cat("A moda da variável Grupo é:", moda)
-
-
+  ggtitle("Gráfico de Barras - Número Total de alunos por Grupo")
 
 
 
@@ -122,15 +96,15 @@ dados$Nota <- as.numeric(as.character(dados$Nota))
 # Criar a tabela de distribuição de frequência simples
 tabela_freq_simples <- dados %>%
   group_by(Nota) %>%
-  summarise(FrequenciaAbsoluta = n()) %>%
-  mutate(Comparecimento_Percentual = FrequenciaAbsoluta / sum(FrequenciaAbsoluta) * 100,
-         FrequenciaRelativa = FrequenciaAbsoluta / sum(FrequenciaAbsoluta))
+  summarise(`Numero de Alunos` = n()) %>%
+  mutate(`Frequencial percentual de aluno` = `Numero de Alunos` / sum(`Numero de Alunos`) * 100,
+         `Frequência Relativa` = `Numero de Alunos` / sum(`Numero de Alunos`))
 
 # Criar a tabela de distribuição de frequência acumulada
 tabela_freq_acumulada <- tabela_freq_simples %>%
-  mutate(FrequenciaAcumuladaAbsoluta = cumsum(FrequenciaAbsoluta),
-         FrequenciaAcumuladaPercentual = cumsum(Comparecimento_Percentual),
-         FrequenciaAcumuladaRelativa = cumsum(FrequenciaRelativa))
+  mutate(`Frequência Acumulada Absoluta` = cumsum(`Numero de Alunos`),
+         `Frequência Acumulada Percentual` = cumsum(`Frequencial percentual de aluno`),
+         `Frequência Acumulada Relativa` = cumsum(`Frequência Relativa`))
 
 # Ordenar as tabelas pelas notas
 tabela_freq_simples <- tabela_freq_simples[order(tabela_freq_simples$Nota), ]
@@ -148,8 +122,6 @@ tabela_freq_acumulada %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 
 
-# Remover valores "NC" (não calculável) para permitir cálculos numéricos
-dados$Nota <- as.numeric(as.character(dados$Nota))
 
 # Calcular a média da variável "Nota"
 media_nota <- mean(dados$Nota, na.rm = TRUE)
@@ -166,8 +138,9 @@ maximo_nota <- max(dados$Nota, na.rm = TRUE)
 # Calcular o desvio padrão da variável "Nota"
 desvio_padrao_nota <- sd(dados$Nota, na.rm = TRUE)
 
-# Calcular a variância da variável Nota
-variancia <- var(dados$Nota)
+# Calcular a variância das notas
+variancia_notas <- var(dados$Nota, na.rm = TRUE)
+
 
 #Coef de Variação
 coeficiente_variacao <- (desvio_padrao_nota / media_nota) * 100
@@ -178,7 +151,7 @@ cat("Mediana:", mediana_nota, "\n")
 cat("Mínimo:", minimo_nota, "\n")
 cat("Máximo:", maximo_nota, "\n")
 cat("Desvio Padrão:", desvio_padrao_nota, "\n")
-cat("Variância:", variancia, "\n")
+cat("Variância:", variancia_notas, "\n")
 cat("Coeficiente de Variação:", coeficiente_variacao, "%\n")
 
 
@@ -186,7 +159,7 @@ cat("Coeficiente de Variação:", coeficiente_variacao, "%\n")
 # Histograma
 ggplot(dados, aes(x = Nota)) +
   geom_histogram(binwidth = 1, fill = "steelblue", color = "black") +
-  labs(x = "Nota", y = "Frequência", title = "Distribuição das Notas do Grupo") +
+  labs(x = "Nota", y = "Número de Alunos", title = "Distribuição das Notas do Grupo") +
   theme_minimal()
 
 
@@ -237,16 +210,38 @@ quartis
 summary(dados$Nota)
 
 
+# Gráfico de Dispersão
+# Remover valores não numéricos da variável Nota
+dados$Nota <- as.numeric(as.character(dados$Nota))
+
+# Calcular a frequência absoluta de cada nota
+freq_notas <- dados %>%
+  group_by(Nota) %>%
+  summarise(FrequenciaAbsoluta = n())
+
+# Adicionar a frequência absoluta de cada nota ao quadro de dados original
+dados_freq <- left_join(dados, freq_notas, by = "Nota")
+
+# Criar o gráfico de dispersão
+ggplot(dados_freq, aes(x = FrequenciaAbsoluta, y = Nota)) +
+  geom_point() +
+  scale_x_continuous(breaks = seq(0, 10, by = 1), limits = c(0, 10)) +
+  scale_y_continuous(breaks = seq(min(dados_freq$Nota, na.rm = TRUE), max(dados_freq$Nota, na.rm = TRUE), by = 1)) +
+  theme_bw() +
+  labs(x = "Número de Alunos", y = "Nota")
+
+
+
 #3 ANALISE VARIAVEL analise os resultados da variável Nota por categoria da variável Grupo
 
-#DISPERSÃO NOTAS DOS ALUNOS POR GRUPO
-dados$Nota[dados$Nota == "NC"] <- NA
-dados$Nota <- as.numeric(dados$Nota)
+# Remover valores não numéricos da variável Nota
+dados$Nota <- as.numeric(as.character(dados$Nota))
 
-ggplot(dados, aes(x = Aluno, y = Nota, color = Grupo)) +
-  geom_point() +
-  facet_wrap(~Grupo) +
-  theme_bw()
+# Criar o gráfico de dispersão
+ggplot(dados, aes(x = Grupo, y = Nota)) +
+  geom_jitter(width = 0.2) +
+  theme_bw() +
+  labs(x = "Grupo", y = "Nota")
 
 #MEDIA, MEDIANA, ASSIMETRIA, DESVIO, Q1,Q3 E CURTOSE
 
@@ -264,15 +259,6 @@ estatisticas_por_grupo <- dados %>%
 # Exibir as estatísticas por grupo
 kable(estatisticas_por_grupo, format = "markdown")
 
-#boxplot notas por grupo
-ggplot(dados, aes(x = Grupo, y = Nota)) +
-  geom_boxplot() +
-  theme_bw()
-
-# Verificar a quantidade de valores únicos em cada grupo
-quantidade_valores_unicos <- dados %>%
-  group_by(Grupo) %>%
-  summarise(Quantidade_unicos = n_distinct(Nota))
 
 # Calcular o mínimo e máximo das notas para cada grupo
 min_max_notas_por_grupo <- dados %>%
@@ -280,25 +266,36 @@ min_max_notas_por_grupo <- dados %>%
   summarise(Mínimo_Nota = min(Nota, na.rm = TRUE),
             Máximo_Nota = max(Nota, na.rm = TRUE))
 
-# Exibir a quantidade de valores únicos em cada grupo
-print("Quantidade de valores únicos em cada grupo:")
-print(quantidade_valores_unicos)
-
 # Exibir o mínimo e máximo das notas para cada grupo
 print("Mínimo e Máximo das notas para cada grupo:")
 print(min_max_notas_por_grupo)
 kable(min_max_notas_por_grupo, format = "markdown")
 
-# Criar o histograma separado para cada grupo
-histograma_notas <- ggplot(dados, aes(x = Nota, fill = Grupo)) +
-  geom_histogram(binwidth = 1, position = "identity", alpha = 0.7) +
-  labs(title = "Distribuição das Notas por Grupo", x = "Nota", y = "Frequência") +
-  scale_fill_manual(values = c("skyblue", "pink", "lightgreen")) +
-  facet_wrap(~ Grupo, ncol = 1) +
-  theme_minimal()
+dados$Nota <- as.numeric(as.character(dados$Nota))
 
-# Exibir o histograma
-print(histograma_notas)
+# Calcular o número de notas acima de 7 por grupo
+notas_acima_7_grupo <- dados %>%
+  filter(Nota >= 7) %>%
+  group_by(Grupo) %>%
+  summarise(NotasAcima7 = n())
+
+# Exibir a tabela
+notas_acima_7_grupo
+
+
+# número de valores ausentes (NA ou "NC") em cada grupo
+# Transformar "NC" em NA (valor ausente)
+dados$Nota[dados$Nota == "NC"] <- NA
+
+# Contar o número de vezes que "NC" aparece em cada grupo
+contagem_NC_por_grupo <- dados %>%
+  group_by(Grupo) %>%
+  summarise(Quantidade_NC = sum(is.na(Nota)))
+
+# Exibir a contagem de valores "NC" em cada grupo
+print("Contagem de valores 'NC' em cada grupo:")
+print(contagem_NC_por_grupo)
+
 
 
 # Criar o gráfico de densidade para cada grupo
@@ -382,5 +379,3 @@ print(c(q1 = porcentagem_y_q1, q2 = porcentagem_y_q2, q3 = porcentagem_y_q3, q4 
 
 print("Porcentagem de alunos em cada intervalo para o grupo Z:")
 print(c(q1 = porcentagem_z_q1, q2 = porcentagem_z_q2, q3 = porcentagem_z_q3, q4 = porcentagem_z_q4))
-
-
